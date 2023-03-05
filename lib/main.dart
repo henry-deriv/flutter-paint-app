@@ -33,6 +33,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  List<Offset?> points = [];
+
   @override
   Widget build(BuildContext context) {
     final double width = MediaQuery.of(context).size.width;
@@ -66,7 +68,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   width: width * 0.8,
                   height: height * 0.8,
                   decoration: BoxDecoration(
-                      color: Colors.white,
                       borderRadius: const BorderRadius.all(Radius.circular(20)),
                       boxShadow: [
                         BoxShadow(
@@ -75,6 +76,30 @@ class _MyHomePageState extends State<MyHomePage> {
                           spreadRadius: 1,
                         )
                       ]),
+                  child: GestureDetector(
+                    onPanDown: (details) {
+                      setState(() {
+                        points.add(details.localPosition);
+                      });
+                    },
+                    onPanUpdate: (details) {
+                      setState(() {
+                        points.add(details.localPosition);
+                      });
+                    },
+                    onPanEnd: (details) {
+                      setState(() {
+                        points.add(null);
+                      });
+                    },
+                    child: ClipRRect(
+                      borderRadius:
+                          const BorderRadius.all(Radius.circular(20.0)),
+                      child: CustomPaint(
+                        painter: MyCustomPainter(points: points),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(
                   height: 20,
@@ -104,5 +129,38 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       ),
     );
+  }
+}
+
+class MyCustomPainter extends CustomPainter {
+  List<Offset?> points;
+
+  MyCustomPainter({required this.points}) : super();
+  @override
+  void paint(Canvas canvas, Size size) {
+    // TODO: implement paint
+    Paint background = Paint()..color = Colors.white;
+    Rect rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    canvas.drawRect(rect, background);
+
+    Paint paint = Paint()
+      ..color = Colors.black
+      ..strokeWidth = 2.0
+      ..isAntiAlias = true
+      ..strokeCap = StrokeCap.round;
+
+    for (int x = 0; x < points.length - 1; x++) {
+      if (points[x] != null && points[x + 1] != null) {
+        canvas.drawLine(points[x]!, points[x + 1]!, paint);
+      } else if (points[x] != null && points[x + 1] == null) {
+        canvas.drawPoints(PointMode.points, [points[x]!], paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    // TODO: implement shouldRepaint
+    return true;
   }
 }
