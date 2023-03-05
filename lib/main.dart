@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,6 +24,13 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class DrawingArea {
+  Offset point;
+  Paint areaPaint;
+
+  DrawingArea({required this.point, required this.areaPaint});
+}
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
@@ -33,7 +41,45 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<Offset?> points = [];
+  List<DrawingArea?> points = [];
+  late Color selectedColor;
+  late double strokeWidth;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedColor = Colors.black;
+    strokeWidth = 2.0;
+  }
+
+  Future<void> selectColor() async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Choose Color'),
+          content: SingleChildScrollView(
+            child: BlockPicker(
+              pickerColor: selectedColor,
+              onColorChanged: (color) {
+                setState(() {
+                  selectedColor = color;
+                });
+              },
+            ),
+          ),
+          actions: <Widget>[
+            ElevatedButton(
+              child: const Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,12 +125,24 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: GestureDetector(
                     onPanDown: (details) {
                       setState(() {
-                        points.add(details.localPosition);
+                        points.add(DrawingArea(
+                            point: details.localPosition,
+                            areaPaint: Paint()
+                              ..strokeCap = StrokeCap.round
+                              ..isAntiAlias = true
+                              ..color = selectedColor
+                              ..strokeWidth = strokeWidth));
                       });
                     },
                     onPanUpdate: (details) {
                       setState(() {
-                        points.add(details.localPosition);
+                        points.add(DrawingArea(
+                            point: details.localPosition,
+                            areaPaint: Paint()
+                              ..strokeCap = StrokeCap.round
+                              ..isAntiAlias = true
+                              ..color = selectedColor
+                              ..strokeWidth = strokeWidth));
                       });
                     },
                     onPanEnd: (details) {
@@ -113,12 +171,32 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.format_paint),
-                        onPressed: () {},
+                        icon: Icon(
+                          Icons.color_lens_rounded,
+                          color: selectedColor,
+                        ),
+                        onPressed: () {
+                          selectColor();
+                        },
+                      ),
+                      Expanded(
+                        child: Slider(
+                          min: 1.0,
+                          max: 7.0,
+                          value: strokeWidth,
+                          activeColor: selectedColor,
+                          onChanged: (value) {
+                            setState(() {
+                              strokeWidth = value;
+                            });
+                          },
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.layers_clear),
-                        onPressed: () {},
+                        onPressed: () {
+                          points.clear();
+                        },
                       ),
                     ],
                   ),
@@ -133,7 +211,7 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 
 class MyCustomPainter extends CustomPainter {
-  List<Offset?> points;
+  List<DrawingArea?> points;
 
   MyCustomPainter({required this.points}) : super();
   @override
@@ -143,17 +221,13 @@ class MyCustomPainter extends CustomPainter {
     Rect rect = Rect.fromLTWH(0, 0, size.width, size.height);
     canvas.drawRect(rect, background);
 
-    Paint paint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 2.0
-      ..isAntiAlias = true
-      ..strokeCap = StrokeCap.round;
-
     for (int x = 0; x < points.length - 1; x++) {
       if (points[x] != null && points[x + 1] != null) {
-        canvas.drawLine(points[x]!, points[x + 1]!, paint);
+        Paint? paint = points[x]?.areaPaint;
+        canvas.drawLine(points[x]!.point, points[x + 1]!.point, paint!);
       } else if (points[x] != null && points[x + 1] == null) {
-        canvas.drawPoints(PointMode.points, [points[x]!], paint);
+        Paint? paint = points[x]?.areaPaint;
+        canvas.drawPoints(PointMode.points, [points[x]!.point], paint!);
       }
     }
   }
